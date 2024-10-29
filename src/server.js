@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
+const config = require('./config');
 
 const app = express();
 const port = 3000;
@@ -12,7 +13,7 @@ const conversationIdPool = {}
 // 调用 Dify API 的函数
 async function callDifyAPI(conversation_id,query) {
     try {
-        const response = await axios.post('https://api.dify.ai/v1/chat-messages', {
+        const response = await axios.post(config.dify.apiUrl, {
             inputs: {},
             query: query,
             response_mode: "blocking",
@@ -20,7 +21,7 @@ async function callDifyAPI(conversation_id,query) {
             user: "abc-1234"
         }, {
             headers: {
-                'Authorization': 'Bearer app-5tIRenLjcXwVsRvSWOoEDhep',
+                'Authorization': config.dify.apiKey,
                 'Content-Type': 'application/json'
             }
         });
