@@ -69,25 +69,41 @@ async function generateResponse(points, content) {
     };
 }
 
+// 获取格式化的当前时间
+function getCurrentTime() {
+    return new Date().toISOString().replace('T', ' ').slice(0, 23);
+}
+
 // API路由处理修改为异步处理
 app.post('/api/process', async (req, res) => {
+    const requestTime = getCurrentTime();
     try {
+        // 打印入参
+        console.log(`\n=== 请求入参 [${requestTime}] ===`);
+        console.log(JSON.stringify(req.body, null, 2));
+
         const { points, mesType, content, audio } = req.body;
 
         // 验证输入
         if (!points || !mesType || !content) {
-            return res.status(400).json({
+            const errorResponse = {
                 status: 1,
                 message: '缺少必要参数'
-            });
+            };
+            console.log(`\n=== 响应出参 [${getCurrentTime()}] ===`);
+            console.log(JSON.stringify(errorResponse, null, 2));
+            return res.status(400).json(errorResponse);
         }
 
         // 检查mesType是否为有效值
         if (mesType !== '1' && mesType !== '2') {
-            return res.status(400).json({
+            const errorResponse = {
                 status: 1,
                 message: 'mesType必须为1或2'
-            });
+            };
+            console.log(`\n=== 响应出参 [${getCurrentTime()}] ===`);
+            console.log(JSON.stringify(errorResponse, null, 2));
+            return res.status(400).json(errorResponse);
         }
 
         // 使用异步函数生成响应
@@ -103,13 +119,21 @@ app.post('/api/process', async (req, res) => {
             data: generatedResponse.data,
         };
 
+        const responseTime = getCurrentTime();
+        // 打印出参
+        console.log(`\n=== 响应出参 [${responseTime}] ===`);
+        console.log(JSON.stringify(response, null, 2));
+
         res.json(response);
     } catch (error) {
         console.error('处理请求失败:', error);
-        res.status(500).json({
+        const errorResponse = {
             status: 1,
             message: '服务器内部错误'
-        });
+        };
+        console.log(`\n=== 错误响应出参 [${getCurrentTime()}] ===`);
+        console.log(JSON.stringify(errorResponse, null, 2));
+        res.status(500).json(errorResponse);
     }
 });
 
