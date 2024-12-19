@@ -4,7 +4,7 @@ const axios = require('axios');
 const config = require('./config');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // 中间件配置
 app.use(bodyParser.json());
