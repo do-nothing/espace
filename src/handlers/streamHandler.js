@@ -3,12 +3,14 @@ const config = require('../config');
 const chatService = require('../services/chatService');
 
 const handleStreamingResponse = async (req, res, apiKey) => {
+    const user = req.body.user;
+    const conversationId = chatService.getConversationId(user);
+    
+    console.log(`[${new Date().toLocaleString()}] 用户${user} 问: ${req.body.query}`);
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-
-    const user = req.body.user;
-    const conversationId = chatService.getConversationId(user);
 
     const response = await axios.post(
         config.dify.apiUrl,
@@ -42,17 +44,35 @@ const handleStreamingResponse = async (req, res, apiKey) => {
         res.end();
 
         try {
-            const jsonMatches = responseData.match(/data: (.+?)(?=\n|$)/g);
-            if (jsonMatches) {
-                jsonMatches.forEach((match) => {
-                    const jsonData = JSON.parse(match.replace(/^data: /, ''));
-                    if (jsonData.conversation_id) {
-                        chatService.setConversationId(user, jsonData.conversation_id);
+            // 查找 workflow_finished 事件的数据
+            const lines = responseData.split('\n');
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                
+                try {
+                    const jsonStr = line.substring(6); // 去掉 'data: ' 前缀
+                    const jsonData = JSON.parse(jsonStr);
+                    
+                    if (jsonData.event === 'workflow_finished') {
+                        const { conversation_id } = jsonData;
+                        const answer = jsonData.data?.outputs?.answer;
+                        
+                        // 设置会话ID
+                        if (conversation_id) {
+                            chatService.setConversationId(user, conversation_id);
+                        }
+                        
+                        // 打印回复日志
+                        console.log(`[${new Date().toLocaleString()}] 用户${user} 收到回复: ${answer || '无回复'}\n`);
+                        break;
                     }
-                });
+                } catch (e) {
+                    // 忽略单条数据的解析错误，继续处理下一条
+                    continue;
+                }
             }
         } catch (error) {
-            console.error('解析数据错误:', error);
+            console.error('解析错误:', error.message);
         }
     });
 
@@ -68,6 +88,8 @@ const handleStreamingResponse = async (req, res, apiKey) => {
 const handleNormalResponse = async (req, res, apiKey) => {
     const user = req.body.user;
     const conversationId = chatService.getConversationId(user);
+    
+    console.log(`[${new Date().toLocaleString()}] 用户${user} 问: ${req.body.query}`);
 
     const response = await axios.post(
         config.dify.apiUrl,
@@ -85,8 +107,9 @@ const handleNormalResponse = async (req, res, apiKey) => {
             }
         }
     );
-    
+
     chatService.setConversationId(user, response.data.conversation_id);
+    console.log(`[${new Date().toLocaleString()}] 用户${user} 收到回复: ${response.data.answer || '无回复'}\n`);
     res.json(response.data);
 };
 
